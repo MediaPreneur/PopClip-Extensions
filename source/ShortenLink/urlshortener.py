@@ -22,11 +22,10 @@ api = {
 def getLink(service,url):
     terms = urllib.quote_plus(url.strip())
     url = service + terms
-    data = urllib2.urlopen(url).read()
-    return data
+    return urllib2.urlopen(url).read()
 
-if (('http' in url) == False):
-    url = 'http://'+url
+if 'http' not in url:
+    url = f'http://{url}'
 
 service = api[serviceDomain]
 #if serviceDomain == 'bit.ly':
@@ -43,9 +42,7 @@ if serviceDomain == 'goo.gl':
     f = urllib2.urlopen(req)
     data = f.read()
     output = json.loads(data)["id"]
-elif serviceDomain == 'is.gd':
-    output = json.loads(getLink(service,url))["shorturl"]
-elif serviceDomain == 'v.gd':
+elif serviceDomain in ['is.gd', 'v.gd']:
     output = json.loads(getLink(service,url))["shorturl"]
 #elif serviceDomain == 'tiny.cc':
 #    output = json.loads(getLink(service,url))["results"]["short_url"]

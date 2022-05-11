@@ -25,7 +25,9 @@ CONTENT_TYPE_MULTI_PART = 'multipart/form-data'
 def _basic_auth_str(username, password):
     """Returns a Basic Auth string."""
 
-    return 'Basic ' + b64encode(('%s:%s' % (username, password)).encode('latin1')).strip().decode('latin1')
+    return 'Basic ' + b64encode(
+        f'{username}:{password}'.encode('latin1')
+    ).strip().decode('latin1')
 
 
 class AuthBase(object):

@@ -16,7 +16,7 @@ class PoolError(HTTPError):
     "Base exception for errors caused within a pool."
     def __init__(self, pool, message):
         self.pool = pool
-        HTTPError.__init__(self, "%s: %s" % (pool, message))
+        HTTPError.__init__(self, f"{pool}: {message}")
 
     def __reduce__(self):
         # For pickling purposes.
@@ -62,9 +62,9 @@ class MaxRetryError(RequestError):
     def __init__(self, pool, url, reason=None):
         self.reason = reason
 
-        message = "Max retries exceeded with url: %s" % url
+        message = f"Max retries exceeded with url: {url}"
         if reason:
-            message += " (Caused by %s: %s)" % (type(reason), reason)
+            message += f" (Caused by {type(reason)}: {reason})"
         else:
             message += " (Caused by redirect)"
 
@@ -75,7 +75,7 @@ class HostChangedError(RequestError):
     "Raised when an existing pool gets a request for a foreign host."
 
     def __init__(self, pool, url, retries=3):
-        message = "Tried to open a foreign host with url: %s" % url
+        message = f"Tried to open a foreign host with url: {url}"
         RequestError.__init__(self, pool, url, message)
         self.retries = retries
 
@@ -120,7 +120,7 @@ class LocationParseError(ValueError, HTTPError):
     "Raised when get_host or similar fails to parse the URL input."
 
     def __init__(self, location):
-        message = "Failed to parse: %s" % location
+        message = f"Failed to parse: {location}"
         HTTPError.__init__(self, message)
 
         self.location = location

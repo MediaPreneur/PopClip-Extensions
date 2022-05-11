@@ -181,8 +181,9 @@ class HTTPHeaderDict(MutableMapping):
         if not isinstance(other, Mapping):
             return False
         other = HTTPHeaderDict(other)
-        return dict((k1, self[k1]) for k1 in self._data) == \
-                dict((k2, other[k2]) for k2 in other._data)
+        return {k1: self[k1] for k1 in self._data} == {
+            k2: other[k2] for k2 in other._data
+        }
 
     def __getitem__(self, key):
         values = self._data[key.lower()]

@@ -86,8 +86,7 @@ class HTTPAdapter(BaseAdapter):
         self.init_poolmanager(pool_connections, pool_maxsize, block=pool_block)
 
     def __getstate__(self):
-        return dict((attr, getattr(self, attr, None)) for attr in
-                    self.__attrs__)
+        return {attr: getattr(self, attr, None) for attr in self.__attrs__}
 
     def __setstate__(self, state):
         # Can't handle by adding 'proxy_manager' to self.__attrs__ because
@@ -130,12 +129,7 @@ class HTTPAdapter(BaseAdapter):
         """
         if url.lower().startswith('https') and verify:
 
-            cert_loc = None
-
-            # Allow self-specified cert location.
-            if verify is not True:
-                cert_loc = verify
-
+            cert_loc = verify if verify is not True else None
             if not cert_loc:
                 cert_loc = DEFAULT_CA_BUNDLE_PATH
 
@@ -200,13 +194,11 @@ class HTTPAdapter(BaseAdapter):
         :param proxies: (optional) A Requests-style dictionary of proxies used on this request.
         """
         proxies = proxies or {}
-        proxy = proxies.get(urlparse(url.lower()).scheme)
-
-        if proxy:
+        if proxy := proxies.get(urlparse(url.lower()).scheme):
             except_on_missing_scheme(proxy)
             proxy_headers = self.proxy_headers(proxy)
 
-            if not proxy in self.proxy_manager:
+            if proxy not in self.proxy_manager:
                 self.proxy_manager[proxy] = proxy_from_url(
                                                 proxy,
                                                 proxy_headers=proxy_headers,
@@ -214,14 +206,12 @@ class HTTPAdapter(BaseAdapter):
                                                 maxsize=self._pool_maxsize,
                                                 block=self._pool_block)
 
-            conn = self.proxy_manager[proxy].connection_from_url(url)
+            return self.proxy_manager[proxy].connection_from_url(url)
         else:
             # Only scheme should be lower case
             parsed = urlparse(url)
             url = parsed.geturl()
-            conn = self.poolmanager.connection_from_url(url)
-
-        return conn
+            return self.poolmanager.connection_from_url(url)
 
     def close(self):
         """Disposes of any internal state.
@@ -308,7 +298,7 @@ class HTTPAdapter(BaseAdapter):
         url = self.request_url(request, proxies)
         self.add_headers(request)
 
-        chunked = not (request.body is None or 'Content-Length' in request.headers)
+        chunked = request.body is not None and 'Content-Length' not in request.headers
 
         timeout = TimeoutSauce(connect=timeout, read=timeout)
 

@@ -154,8 +154,10 @@ class VerifiedHTTPSConnection(HTTPSConnection):
             )
         except SocketTimeout:
             raise ConnectTimeoutError(
-                self, "Connection to %s timed out. (connect timeout=%s)" %
-                (self.host, self.timeout))
+                self,
+                f"Connection to {self.host} timed out. (connect timeout={self.timeout})",
+            )
+
 
         sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY,
                         self.tcp_nodelay)

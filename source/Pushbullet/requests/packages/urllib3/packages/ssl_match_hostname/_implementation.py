@@ -33,7 +33,9 @@ def _dnsname_match(dn, hostname, max_wildcards=1):
         # policy among SSL implementations showed it to be a
         # reasonable choice.
         raise CertificateError(
-            "too many wildcards in certificate DNS name: " + repr(dn))
+            f"too many wildcards in certificate DNS name: {repr(dn)}"
+        )
+
 
     # speed up common case w/o wildcards
     if not wildcards:
@@ -57,9 +59,7 @@ def _dnsname_match(dn, hostname, max_wildcards=1):
         pats.append(re.escape(leftmost).replace(r'\*', '[^.]*'))
 
     # add the remaining fragments, ignore any wildcards
-    for frag in remainder:
-        pats.append(re.escape(frag))
-
+    pats.extend(re.escape(frag) for frag in remainder)
     pat = re.compile(r'\A' + r'\.'.join(pats) + r'\Z', re.IGNORECASE)
     return pat.match(hostname)
 

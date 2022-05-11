@@ -112,10 +112,7 @@ class MovedAttribute(_LazyDescr):
                 new_mod = name
             self.mod = new_mod
             if new_attr is None:
-                if old_attr is None:
-                    new_attr = name
-                else:
-                    new_attr = old_attr
+                new_attr = name if old_attr is None else old_attr
             self.attr = new_attr
         else:
             self.mod = old_mod
@@ -131,8 +128,6 @@ class MovedAttribute(_LazyDescr):
 
 class _MovedItems(types.ModuleType):
     """Lazy loading of moved objects"""
-
-
 _moved_attributes = [
     MovedAttribute("cStringIO", "cStringIO", "io", "StringIO"),
     MovedAttribute("filter", "itertools", "builtins", "ifilter", "filter"),
@@ -183,7 +178,7 @@ for attr in _moved_attributes:
     setattr(_MovedItems, attr.name, attr)
 del attr
 
-moves = sys.modules[__name__ + ".moves"] = _MovedItems("moves")
+moves = sys.modules[f"{__name__}.moves"] = _MovedItems("moves")
 
 
 def add_move(move):

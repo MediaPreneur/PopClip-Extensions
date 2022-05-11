@@ -165,7 +165,7 @@ class PoolManager(RequestMethods):
         if response.status == 303:
             method = 'GET'
 
-        log.info("Redirecting %s -> %s" % (url, redirect_location))
+        log.info(f"Redirecting {url} -> {redirect_location}")
         kw['retries'] = kw.get('retries', 3) - 1  # Persist retries countdown
         kw['redirect'] = redirect
         return self.urlopen(method, redirect_location, **kw)
@@ -210,8 +210,11 @@ class ProxyManager(PoolManager):
             proxy = proxy._replace(port=port)
         self.proxy = proxy
         self.proxy_headers = proxy_headers or {}
-        assert self.proxy.scheme in ("http", "https"), \
-            'Not supported proxy scheme %s' % self.proxy.scheme
+        assert self.proxy.scheme in (
+            "http",
+            "https",
+        ), f'Not supported proxy scheme {self.proxy.scheme}'
+
         connection_pool_kw['_proxy'] = self.proxy
         connection_pool_kw['_proxy_headers'] = self.proxy_headers
         super(ProxyManager, self).__init__(
@@ -232,12 +235,11 @@ class ProxyManager(PoolManager):
         """
         headers_ = {'Accept': '*/*'}
 
-        netloc = parse_url(url).netloc
-        if netloc:
+        if netloc := parse_url(url).netloc:
             headers_['Host'] = netloc
 
         if headers:
-            headers_.update(headers)
+            headers_ |= headers
         return headers_
 
     def urlopen(self, method, url, redirect=True, **kw):

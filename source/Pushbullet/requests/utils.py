@@ -96,8 +96,7 @@ def get_netrc_auth(url):
         host = ri.netloc.split(':')[0]
 
         try:
-            _netrc = netrc(netrc_path).authenticators(host)
-            if _netrc:
+            if _netrc := netrc(netrc_path).authenticators(host):
                 # Return with login / password
                 login_i = (0 if _netrc[0] else 1)
                 return (_netrc[login_i], _netrc[2])
@@ -106,7 +105,6 @@ def get_netrc_auth(url):
             # we'll just skip netrc auth
             pass
 
-    # AppEngine hackiness.
     except (ImportError, AttributeError):
         pass
 
@@ -262,12 +260,7 @@ def dict_from_cookiejar(cj):
     :param cj: CookieJar object to extract cookies from.
     """
 
-    cookie_dict = {}
-
-    for cookie in cj:
-        cookie_dict[cookie.name] = cookie.value
-
-    return cookie_dict
+    return {cookie.name: cookie.value for cookie in cj}
 
 
 def add_dict_to_cookiejar(cj, cookie_dict):
@@ -321,17 +314,14 @@ def stream_decode_response_unicode(iterator, r):
     """Stream decodes a iterator."""
 
     if r.encoding is None:
-        for item in iterator:
-            yield item
+        yield from iterator
         return
 
     decoder = codecs.getincrementaldecoder(r.encoding)(errors='replace')
     for chunk in iterator:
-        rv = decoder.decode(chunk)
-        if rv:
+        if rv := decoder.decode(chunk):
             yield rv
-    rv = decoder.decode(b'', final=True)
-    if rv:
+    if rv := decoder.decode(b'', final=True):
         yield rv
 
 
@@ -358,12 +348,12 @@ def get_unicode_from_response(r):
 
     """
 
-    tried_encodings = []
-
     # Try charset from content-type
     encoding = get_encoding_from_headers(r.headers)
 
     if encoding:
+        tried_encodings = []
+
         try:
             return str(r.content, encoding)
         except UnicodeError:
@@ -388,19 +378,16 @@ def unquote_unreserved(uri):
     """
     parts = uri.split('%')
     for i in range(1, len(parts)):
-        h = parts[i][0:2]
+        h = parts[i][:2]
         if len(h) == 2 and h.isalnum():
             try:
                 c = chr(int(h, 16))
             except ValueError:
                 raise InvalidURL("Invalid percent-escape sequence: '%s'" % h)
 
-            if c in UNRESERVED_SET:
-                parts[i] = c + parts[i][2:]
-            else:
-                parts[i] = '%' + parts[i]
+            parts[i] = c + parts[i][2:] if c in UNRESERVED_SET else f'%{parts[i]}'
         else:
-            parts[i] = '%' + parts[i]
+            parts[i] = f'%{parts[i]}'
     return ''.join(parts)
 
 
@@ -448,20 +435,19 @@ def is_ipv4_address(string_ip):
 
 def is_valid_cidr(string_network):
     """Very simple check of the cidr format in no_proxy variable"""
-    if string_network.count('/') == 1:
-        try:
-            mask = int(string_network.split('/')[1])
-        except ValueError:
-            return False
+    if string_network.count('/') != 1:
+        return False
+    try:
+        mask = int(string_network.split('/')[1])
+    except ValueError:
+        return False
 
-        if mask < 1 or mask > 32:
-            return False
+    if mask < 1 or mask > 32:
+        return False
 
-        try:
-            socket.inet_aton(string_network.split('/')[0])
-        except socket.error:
-            return False
-    else:
+    try:
+        socket.inet_aton(string_network.split('/')[0])
+    except socket.error:
         return False
     return True
 
@@ -485,9 +471,10 @@ def should_bypass_proxies(url):
         ip = netloc.split(':')[0]
         if is_ipv4_address(ip):
             for proxy_ip in no_proxy:
-                if is_valid_cidr(proxy_ip):
-                    if address_in_network(ip, proxy_ip):
-                        return True
+                if is_valid_cidr(proxy_ip) and address_in_network(
+                    ip, proxy_ip
+                ):
+                    return True
         else:
             for host in no_proxy:
                 if netloc.endswith(host) or netloc.split(':')[0].endswith(host):
@@ -513,28 +500,26 @@ def should_bypass_proxies(url):
 
 def get_environ_proxies(url):
     """Return a dict of environment proxies."""
-    if should_bypass_proxies(url):
-        return {}
-    else:
-        return getproxies()
+    return {} if should_bypass_proxies(url) else getproxies()
 
 
 def default_user_agent(name="python-requests"):
     """Return a string representing the default user agent."""
     _implementation = platform.python_implementation()
 
-    if _implementation == 'CPython':
+    if (
+        _implementation == 'CPython'
+        or _implementation != 'PyPy'
+        and _implementation == 'Jython'
+        or _implementation != 'PyPy'
+        and _implementation == 'IronPython'
+    ):
         _implementation_version = platform.python_version()
     elif _implementation == 'PyPy':
-        _implementation_version = '%s.%s.%s' % (sys.pypy_version_info.major,
-                                                sys.pypy_version_info.minor,
-                                                sys.pypy_version_info.micro)
+        _implementation_version = f'{sys.pypy_version_info.major}.{sys.pypy_version_info.minor}.{sys.pypy_version_info.micro}'
+
         if sys.pypy_version_info.releaselevel != 'final':
             _implementation_version = ''.join([_implementation_version, sys.pypy_version_info.releaselevel])
-    elif _implementation == 'Jython':
-        _implementation_version = platform.python_version()  # Complete Guess
-    elif _implementation == 'IronPython':
-        _implementation_version = platform.python_version()  # Complete Guess
     else:
         _implementation_version = 'Unknown'
 
@@ -545,9 +530,13 @@ def default_user_agent(name="python-requests"):
         p_system = 'Unknown'
         p_release = 'Unknown'
 
-    return " ".join(['%s/%s' % (name, __version__),
-                     '%s/%s' % (_implementation, _implementation_version),
-                     '%s/%s' % (p_system, p_release)])
+    return " ".join(
+        [
+            f'{name}/{__version__}',
+            f'{_implementation}/{_implementation_version}',
+            f'{p_system}/{p_release}',
+        ]
+    )
 
 
 def default_headers():
@@ -575,9 +564,7 @@ def parse_header_links(value):
         except ValueError:
             url, params = val, ''
 
-        link = {}
-
-        link["url"] = url.strip("<> '\"")
+        link = {"url": url.strip("<> '\"")}
 
         for param in params.split(";"):
             try:
@@ -617,13 +604,11 @@ def guess_json_utf(data):
             return 'utf-16-be'
         if sample[1::2] == _null2:  # 2nd and 4th are null
             return 'utf-16-le'
-        # Did not detect 2 valid UTF-16 ascii-range characters
-    if nullcount == 3:
+    elif nullcount == 3:
         if sample[:3] == _null3:
             return 'utf-32-be'
         if sample[1:] == _null3:
             return 'utf-32-le'
-        # Did not detect a valid UTF-32 ascii-range character
     return None
 
 
@@ -658,11 +643,6 @@ def to_native_string(string, encoding='ascii'):
     out = None
 
     if isinstance(string, builtin_str):
-        out = string
+        return string
     else:
-        if is_py2:
-            out = string.encode(encoding)
-        else:
-            out = string.decode(encoding)
-
-    return out
+        return string.encode(encoding) if is_py2 else string.decode(encoding)

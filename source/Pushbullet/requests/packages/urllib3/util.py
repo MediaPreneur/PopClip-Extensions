@@ -287,16 +287,14 @@ class Url(namedtuple('Url', ['scheme', 'auth', 'host', 'port', 'path', 'query', 
         uri = self.path or '/'
 
         if self.query is not None:
-            uri += '?' + self.query
+            uri += f'?{self.query}'
 
         return uri
 
     @property
     def netloc(self):
         """Network location including host and port"""
-        if self.port:
-            return '%s:%d' % (self.host, self.port)
-        return self.host
+        return '%s:%d' % (self.host, self.port) if self.port else self.host
 
 
 def split_first(s, delims):
@@ -349,19 +347,10 @@ def parse_url(url):
         Url(scheme=None, host=None, port=None, path='/foo', query='bar', ...)
     """
 
-    # While this code has overlap with stdlib's urlparse, it is much
-    # simplified for our needs and less annoying.
-    # Additionally, this implementations does silly things to be optimal
-    # on CPython.
-
-    scheme = None
-    auth = None
-    host = None
-    port = None
-    path = None
     fragment = None
     query = None
 
+    scheme = None
     # Scheme
     if '://' in url:
         scheme, url = url.split('://', 1)
@@ -370,20 +359,20 @@ def parse_url(url):
     # (http://tools.ietf.org/html/rfc3986#section-3.2)
     url, path_, delim = split_first(url, ['/', '?', '#'])
 
-    if delim:
-        # Reassemble the path
-        path = delim + path_
-
+    path = delim + path_ if delim else None
+    auth = None
     # Auth
     if '@' in url:
         # Last '@' denotes end of auth part
         auth, url = url.rsplit('@', 1)
 
+    host = None
     # IPv6
     if url and url[0] == '[':
         host, url = url.split(']', 1)
         host += ']'
 
+    port = None
     # Port
     if ':' in url:
         _host, port = url.split(':', 1)
@@ -394,7 +383,7 @@ def parse_url(url):
         if port:
             # If given, ports must be integers.
             if not port.isdigit():
-                raise LocationParseError("Failed to parse: %s" % url)
+                raise LocationParseError(f"Failed to parse: {url}")
             port = int(port)
         else:
             # Blank ports are cool, too. (rfc3986#section-3.2.3)
@@ -534,7 +523,7 @@ def resolve_cert_reqs(candidate):
     if isinstance(candidate, str):
         res = getattr(ssl, candidate, None)
         if res is None:
-            res = getattr(ssl, 'CERT_' + candidate)
+            res = getattr(ssl, f'CERT_{candidate}')
         return res
 
     return candidate
@@ -550,7 +539,7 @@ def resolve_ssl_version(candidate):
     if isinstance(candidate, str):
         res = getattr(ssl, candidate, None)
         if res is None:
-            res = getattr(ssl, 'PROTOCOL_' + candidate)
+            res = getattr(ssl, f'PROTOCOL_{candidate}')
         return res
 
     return candidate
@@ -587,7 +576,7 @@ def assert_fingerprint(cert, fingerprint):
 
     cert_digest = hashfunc(cert).digest()
 
-    if not cert_digest == fingerprint_bytes:
+    if cert_digest != fingerprint_bytes:
         raise SSLError('Fingerprints did not match. Expected "{0}", got "{1}".'
                        .format(hexlify(fingerprint_bytes),
                                hexlify(cert_digest)))
@@ -599,12 +588,7 @@ def is_fp_closed(obj):
     :param obj:
         The file-like object to check.
     """
-    if hasattr(obj, 'fp'):
-        # Object is a container for another file-like object that gets released
-        # on exhaustion (e.g. HTTPResponse)
-        return obj.fp is None
-
-    return obj.closed
+    return obj.fp is None if hasattr(obj, 'fp') else obj.closed
 
 
 if SSLContext is not None:  # Python 3.2+

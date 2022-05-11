@@ -140,12 +140,13 @@ def remove_cookie_by_name(cookiejar, name, domain=None, path=None):
 
     Wraps CookieJar.clear(), is O(n).
     """
-    clearables = []
-    for cookie in cookiejar:
-        if cookie.name == name:
-            if domain is None or domain == cookie.domain:
-                if path is None or path == cookie.path:
-                    clearables.append((cookie.domain, cookie.path, cookie.name))
+    clearables = [
+        (cookie.domain, cookie.path, cookie.name)
+        for cookie in cookiejar
+        if cookie.name == name
+        and (domain is None or domain == cookie.domain)
+        and (path is None or path == cookie.path)
+    ]
 
     for domain, path, name in clearables:
         cookiejar.clear(domain, path, name)
@@ -261,12 +262,12 @@ class RequestsCookieJar(cookielib.CookieJar, collections.MutableMapping):
     def get_dict(self, domain=None, path=None):
         """Takes as an argument an optional domain and path and returns a plain old
         Python dict of name-value pairs of cookies that meet the requirements."""
-        dictionary = {}
-        for cookie in iter(self):
-            if (domain is None or cookie.domain == domain) and (path is None
-                                                or cookie.path == path):
-                dictionary[cookie.name] = cookie.value
-        return dictionary
+        return {
+            cookie.name: cookie.value
+            for cookie in iter(self)
+            if (domain is None or cookie.domain == domain)
+            and (path is None or cookie.path == path)
+        }
 
     def __getitem__(self, name):
         """Dict-like __getitem__() for compatibility with client code. Throws exception
@@ -305,10 +306,12 @@ class RequestsCookieJar(cookielib.CookieJar, collections.MutableMapping):
         _find arbitrarily chooses one. See _find_no_duplicates if you want an exception thrown
         if there are conflicting cookies."""
         for cookie in iter(self):
-            if cookie.name == name:
-                if domain is None or cookie.domain == domain:
-                    if path is None or cookie.path == path:
-                        return cookie.value
+            if (
+                cookie.name == name
+                and (domain is None or cookie.domain == domain)
+                and (path is None or cookie.path == path)
+            ):
+                return cookie.value
 
         raise KeyError('name=%r, domain=%r, path=%r' % (name, domain, path))
 
@@ -319,12 +322,14 @@ class RequestsCookieJar(cookielib.CookieJar, collections.MutableMapping):
         multiple cookies that match name and optionally domain and path."""
         toReturn = None
         for cookie in iter(self):
-            if cookie.name == name:
-                if domain is None or cookie.domain == domain:
-                    if path is None or cookie.path == path:
-                        if toReturn is not None:  # if there are multiple cookies that meet passed in criteria
-                            raise CookieConflictError('There are multiple cookies with name, %r' % (name))
-                        toReturn = cookie.value  # we will eventually return this as long as no cookie conflict
+            if (
+                cookie.name == name
+                and (domain is None or cookie.domain == domain)
+                and (path is None or cookie.path == path)
+            ):
+                if toReturn is not None:  # if there are multiple cookies that meet passed in criteria
+                    raise CookieConflictError('There are multiple cookies with name, %r' % (name))
+                toReturn = cookie.value  # we will eventually return this as long as no cookie conflict
 
         if toReturn:
             return toReturn
@@ -371,12 +376,11 @@ def create_cookie(name, value, **kwargs):
         rest={'HttpOnly': None},
         rfc2109=False,)
 
-    badargs = set(kwargs) - set(result)
-    if badargs:
+    if badargs := set(kwargs) - set(result):
         err = 'create_cookie() got unexpected keyword arguments: %s'
         raise TypeError(err % list(badargs))
 
-    result.update(kwargs)
+    result |= kwargs
     result['port_specified'] = bool(result['port'])
     result['domain_specified'] = bool(result['domain'])
     result['domain_initial_dot'] = result['domain'].startswith('.')

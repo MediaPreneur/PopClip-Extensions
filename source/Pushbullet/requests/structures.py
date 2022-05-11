@@ -63,7 +63,7 @@ class CaseInsensitiveDict(collections.MutableMapping):
 
     """
     def __init__(self, data=None, **kwargs):
-        self._store = dict()
+        self._store = {}
         if data is None:
             data = {}
         self.update(data, **kwargs)

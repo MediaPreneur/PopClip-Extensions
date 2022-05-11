@@ -76,7 +76,7 @@ class ConnectionPool(object):
                                          self.host, self.port)
 
 # This is taken from http://hg.python.org/cpython/file/7aaba721ebc0/Lib/socket.py#l252
-_blocking_errnos = set([errno.EAGAIN, errno.EWOULDBLOCK])
+_blocking_errnos = {errno.EAGAIN, errno.EWOULDBLOCK}
 
 class HTTPConnectionPool(ConnectionPool, RequestMethods):
     """
@@ -204,11 +204,9 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                 raise EmptyPoolError(self,
                                      "Pool reached maximum size and no more "
                                      "connections are allowed.")
-            pass  # Oh well, we'll create a new connection then
-
         # If this is a persistent connection, check if it got disconnected
         if conn and is_connection_dropped(conn):
-            log.info("Resetting dropped connection: %s" % self.host)
+            log.info(f"Resetting dropped connection: {self.host}")
             conn.close()
 
         return conn or self._new_conn()
@@ -235,9 +233,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             pass
         except Full:
             # This should never happen if self.block == True
-            log.warning(
-                "Connection pool is full, discarding connection: %s" %
-                self.host)
+            log.warning(f"Connection pool is full, discarding connection: {self.host}")
 
         # Connection never got put back into the pool, close it.
         if conn:
@@ -283,8 +279,10 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             conn.request(method, url, **httplib_request_kw)
         except SocketTimeout:
             raise ConnectTimeoutError(
-                self, "Connection to %s timed out. (connect timeout=%s)" %
-                (self.host, timeout_obj.connect_timeout))
+                self,
+                f"Connection to {self.host} timed out. (connect timeout={timeout_obj.connect_timeout})",
+            )
+
 
         # Reset the timeout for the recv() on the socket
         read_timeout = timeout_obj.read_timeout
@@ -298,8 +296,9 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             # timeouts, check for a zero timeout before making the request.
             if read_timeout == 0:
                 raise ReadTimeoutError(
-                    self, url,
-                    "Read timed out. (read timeout=%s)" % read_timeout)
+                    self, url, f"Read timed out. (read timeout={read_timeout})"
+                )
+
             if read_timeout is Timeout.DEFAULT_TIMEOUT:
                 conn.sock.settimeout(socket.getdefaulttimeout())
             else: # None or a value
@@ -313,7 +312,9 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                 httplib_response = conn.getresponse()
         except SocketTimeout:
             raise ReadTimeoutError(
-                self, url, "Read timed out. (read timeout=%s)" % read_timeout)
+                self, url, f"Read timed out. (read timeout={read_timeout})"
+            )
+
 
         except BaseSSLError as e:
             # Catch possible read timeouts thrown as SSL errors. If not the
@@ -330,8 +331,9 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             # have to specifically catch it and throw the timeout error
             if e.errno in _blocking_errnos:
                 raise ReadTimeoutError(
-                    self, url,
-                    "Read timed out. (read timeout=%s)" % read_timeout)
+                    self, url, f"Read timed out. (read timeout={read_timeout})"
+                )
+
 
             raise
 
@@ -351,8 +353,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
         try:
             while True:
-                conn = old_pool.get(block=False)
-                if conn:
+                if conn := old_pool.get(block=False):
                     conn.close()
 
         except Empty:
@@ -558,7 +559,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         if redirect_location and retries is not False:
             if response.status == 303:
                 method = 'GET'
-            log.info("Redirecting %s -> %s" % (url, redirect_location))
+            log.info(f"Redirecting {url} -> {redirect_location}")
             return self.urlopen(method, redirect_location, body, headers,
                                 retries - 1, redirect, assert_same_host,
                                 timeout=timeout, pool_timeout=pool_timeout,

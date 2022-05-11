@@ -177,7 +177,6 @@ class fileobject(_fileobject):
                 if not data:
                     break
                 buf.write(data)
-            return buf.getvalue()
         else:
             # Read until size bytes or EOF seen, whichever comes first
             buf_len = buf.tell()
@@ -221,7 +220,8 @@ class fileobject(_fileobject):
                 buf_len += n
                 del data  # explicit free
                 #assert buf_len == buf.tell()
-            return buf.getvalue()
+
+        return buf.getvalue()
 
     def readline(self, size=-1):
         buf = self._rbuf
@@ -275,7 +275,6 @@ class fileobject(_fileobject):
                     del data
                     break
                 buf.write(data)
-            return buf.getvalue()
         else:
             # Read until size bytes or \n or EOF seen, whichever comes first
             buf.seek(0, 2)  # seek end
@@ -302,13 +301,12 @@ class fileobject(_fileobject):
                     nl += 1
                     # save the excess data to _rbuf
                     self._rbuf.write(data[nl:])
-                    if buf_len:
-                        buf.write(data[:nl])
-                        break
-                    else:
+                    if not buf_len:
                         # Shortcut.  Avoid data copy through buf when returning
                         # a substring of our first recv().
                         return data[:nl]
+                    buf.write(data[:nl])
+                    break
                 n = len(data)
                 if n == size and not buf_len:
                     # Shortcut.  Avoid data copy through buf when
@@ -320,8 +318,9 @@ class fileobject(_fileobject):
                     break
                 buf.write(data)
                 buf_len += n
-                #assert buf_len == buf.tell()
-            return buf.getvalue()
+                        #assert buf_len == buf.tell()
+
+        return buf.getvalue()
 
 
 class WrappedSocket(object):

@@ -33,7 +33,7 @@ def main(clipNum):
 	# log(str(os.environ)) #useful helper
 
 	s = os.environ['POPCLIP_TEXT']
-	pasteIt = False if len(s) else True
+	pasteIt = not len(s)
 
 	modifiers	= int(os.environ['POPCLIP_MODIFIER_FLAGS'])
 	alternate	= (modifiers & keyShift) == keyShift
@@ -42,7 +42,7 @@ def main(clipNum):
 	deleteIt	= (modifiers & keyCommand) == 0
 	deleteAll	= modifiers == (keyControl | keyOption | keyCommand)
 	modifiers	= 0
-	
+
 	board = os.environ['POPCLIP_OPTION_DEFAULT_CLIPBOARD']
 	#log("Board is " + board)
 
@@ -58,7 +58,7 @@ def main(clipNum):
 	# OK, now lets do the real work!
 
 	makeOrFetchDict(clipboard)
-	
+
 	try:
 		clips = dict[clipNum]
 	except KeyError:
@@ -78,7 +78,7 @@ def main(clipNum):
 	if deleteAll:
 		clips.clear()
 		saveIt = True
-		
+
 	elif pasteIt and (not popAll or chooseOne):
 		ret = getOne(clipNum, deleteIt, chooseOne)
 		if deleteIt: saveIt = True
@@ -90,10 +90,9 @@ def main(clipNum):
 			clips.clear()
 			saveIt = True
 		#log("Did join")
-	elif not pasteIt:
-		if len(s):
-			clips.append(s)
-			saveIt = True
+	elif len(s):
+		clips.append(s)
+		saveIt = True
 
 	#log("Clip: %s dump: %s" % (clipNum, clips))
 
@@ -104,36 +103,34 @@ def main(clipNum):
 
 def saveClip():
 	try:
-		#log("TRY WRITE")
-		fp = open(path, "wb")
-		#log("DID IT now dump!")
-		try:
-			pickle.dump(dict, fp, pickle.HIGHEST_PROTOCOL)
-		except:
-			log("pickle dump failed!")
-		else:
-			log("successfully dumped!")
-		fp.close()
+		with open(path, "wb") as fp:
+			#log("DID IT now dump!")
+			try:
+				pickle.dump(dict, fp, pickle.HIGHEST_PROTOCOL)
+			except:
+				log("pickle dump failed!")
+			else:
+				log("successfully dumped!")
 	except IOError:
 		log("Failed to save Clip file")
 	return
 
 def makeOrFetchDict(clibBoard):
 	global path
-	path = os.getcwd() + "/../../Klipz"
-	log("Path1: " + path)
-	
+	path = f"{os.getcwd()}/../../Klipz"
+	log(f"Path1: {path}")
+
 	try:
 		mode = os.stat(path).st_mode;
 	except OSError:
 		try:
 			os.mkdir(path)
 		except OSError:
-			log("Failed to create directory at " + path)
+			log(f"Failed to create directory at {path}")
 			exit(1)
 
-	path += "/" + clibBoard.strip() + ".pic"
-	log("Path2: " + path)
+	path += f"/{clibBoard.strip()}.pic"
+	log(f"Path2: {path}")
 
 	global dict
 	dict = {}
@@ -154,9 +151,7 @@ def makeOrFetchDict(clibBoard):
 		except PickleError:
 			log("PickleError on load")
 		except Exception as e:
-			log("EXCEPT on pickle.load: " + e.__name__)
-		except:
-			log("EXCEPTION on pickle.load")
+			log(f"EXCEPT on pickle.load: {e.__name__}")
 		fp.close()
 
 	return
@@ -170,7 +165,7 @@ def getOne(clipNum, deleteIt, chooseOne):
 	if len(d) == 0:
 		beep()
 		return "\n"
-	
+
 	idx = 0
 	if chooseOne:
 		l = []
@@ -178,7 +173,7 @@ def getOne(clipNum, deleteIt, chooseOne):
 			s2 = snipper(s)
 			l.append(s2)
 		cmd = "osascript script0.txt " + "\"Clipboard " + str(clipNum) + "\" '" + "' '".join(enumerateFunction(l)) + "'"
-		log("Cmd: %s" % cmd)
+		log(f"Cmd: {cmd}")
 
 		option = os.popen(cmd).read().strip()
 		if option == "false":
@@ -228,8 +223,8 @@ def identity(arg):
 	return arg
 
 def handleException(excType, excValue, traceback):
-	s = str(excType) + ' ' + str(excValue) + ' ' + str(traceback)
-	log("EXCEPTION: " + s)
+	s = f'{str(excType)} {str(excValue)} {str(traceback)}'
+	log(f"EXCEPTION: {s}")
 
 sys.excepthook = handleException
 

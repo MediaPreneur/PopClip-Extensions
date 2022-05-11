@@ -26,11 +26,9 @@ def description_of(file, name='stdin'):
     u.close()
     result = u.result
     if result['encoding']:
-        return '%s: %s with confidence %s' % (name,
-                                              result['encoding'],
-                                              result['confidence'])
+        return f"{name}: {result['encoding']} with confidence {result['confidence']}"
     else:
-        return '%s: no result' % name
+        return f'{name}: no result'
 
 
 def main():

@@ -81,31 +81,34 @@ class SingleByteCharSetProber(CharSetProber):
                 self._mFreqChar += 1
                 if self._mLastOrder < SAMPLE_SIZE:
                     self._mTotalSeqs += 1
-                    if not self._mReversed:
-                        i = (self._mLastOrder * SAMPLE_SIZE) + order
-                        model = self._mModel['precedenceMatrix'][i]
-                    else:  # reverse the order of the letters in the lookup
-                        i = (order * SAMPLE_SIZE) + self._mLastOrder
-                        model = self._mModel['precedenceMatrix'][i]
+                    i = (
+                        (order * SAMPLE_SIZE) + self._mLastOrder
+                        if self._mReversed
+                        else (self._mLastOrder * SAMPLE_SIZE) + order
+                    )
+
+                    model = self._mModel['precedenceMatrix'][i]
                     self._mSeqCounters[model] += 1
             self._mLastOrder = order
 
-        if self.get_state() == constants.eDetecting:
-            if self._mTotalSeqs > SB_ENOUGH_REL_THRESHOLD:
-                cf = self.get_confidence()
-                if cf > POSITIVE_SHORTCUT_THRESHOLD:
-                    if constants._debug:
-                        sys.stderr.write('%s confidence = %s, we have a'
-                                         'winner\n' %
-                                         (self._mModel['charsetName'], cf))
-                    self._mState = constants.eFoundIt
-                elif cf < NEGATIVE_SHORTCUT_THRESHOLD:
-                    if constants._debug:
-                        sys.stderr.write('%s confidence = %s, below negative'
-                                         'shortcut threshhold %s\n' %
-                                         (self._mModel['charsetName'], cf,
-                                          NEGATIVE_SHORTCUT_THRESHOLD))
-                    self._mState = constants.eNotMe
+        if (
+            self.get_state() == constants.eDetecting
+            and self._mTotalSeqs > SB_ENOUGH_REL_THRESHOLD
+        ):
+            cf = self.get_confidence()
+            if cf > POSITIVE_SHORTCUT_THRESHOLD:
+                if constants._debug:
+                    sys.stderr.write('%s confidence = %s, we have a'
+                                     'winner\n' %
+                                     (self._mModel['charsetName'], cf))
+                self._mState = constants.eFoundIt
+            elif cf < NEGATIVE_SHORTCUT_THRESHOLD:
+                if constants._debug:
+                    sys.stderr.write('%s confidence = %s, below negative'
+                                     'shortcut threshhold %s\n' %
+                                     (self._mModel['charsetName'], cf,
+                                      NEGATIVE_SHORTCUT_THRESHOLD))
+                self._mState = constants.eNotMe
 
         return self.get_state()
 

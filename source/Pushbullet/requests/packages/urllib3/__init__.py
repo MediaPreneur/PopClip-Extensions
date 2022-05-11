@@ -51,7 +51,7 @@ def add_stderr_logger(level=logging.DEBUG):
     handler.setFormatter(logging.Formatter('%(asctime)s %(levelname)s %(message)s'))
     logger.addHandler(handler)
     logger.setLevel(level)
-    logger.debug('Added an stderr logging handler to logger: %s' % __name__)
+    logger.debug(f'Added an stderr logging handler to logger: {__name__}')
     return handler
 
 # ... Clean up.

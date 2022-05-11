@@ -63,7 +63,7 @@ def merge_setting(request_setting, session_setting, dict_class=OrderedDict):
         if v is None:
             del merged_setting[k]
 
-    merged_setting = dict((k, v) for (k, v) in merged_setting.items() if v is not None)
+    merged_setting = {k: v for (k, v) in merged_setting.items() if v is not None}
 
     return merged_setting
 
@@ -97,7 +97,7 @@ class SessionRedirectMixin(object):
             resp.content  # Consume socket so it can be released
 
             if i >= self.max_redirects:
-                raise TooManyRedirects('Exceeded %s redirects.' % self.max_redirects)
+                raise TooManyRedirects(f'Exceeded {self.max_redirects} redirects.')
 
             # Release the connection back into the pool.
             resp.close()
@@ -108,7 +108,7 @@ class SessionRedirectMixin(object):
             # Handle redirection without scheme (see: RFC 1808 Section 4)
             if url.startswith('//'):
                 parsed_rurl = urlparse(resp.url)
-                url = '%s:%s' % (parsed_rurl.scheme, url)
+                url = f'{parsed_rurl.scheme}:{url}'
 
             # The scheme should be lower case...
             parsed = urlparse(url)
@@ -117,10 +117,11 @@ class SessionRedirectMixin(object):
             # Facilitate non-RFC2616-compliant 'location' headers
             # (e.g. '/path/to/resource' instead of 'http://domain.tld/path/to/resource')
             # Compliant with RFC3986, we percent encode the url.
-            if not urlparse(url).netloc:
-                url = urljoin(resp.url, requote_uri(url))
-            else:
-                url = requote_uri(url)
+            url = (
+                requote_uri(url)
+                if urlparse(url).netloc
+                else urljoin(resp.url, requote_uri(url))
+            )
 
             prepared_request.url = to_native_string(url)
 
@@ -224,9 +225,7 @@ class SessionRedirectMixin(object):
             environ_proxies = get_environ_proxies(url)
             scheme = urlparse(url).scheme
 
-            proxy = environ_proxies.get(scheme)
-
-            if proxy:
+            if proxy := environ_proxies.get(scheme):
                 new_proxies.setdefault(scheme, environ_proxies[scheme])
 
         if 'Proxy-Authorization' in headers:
@@ -449,9 +448,7 @@ class Session(SessionRedirectMixin):
             'proxies': proxies,
             'allow_redirects': allow_redirects,
         }
-        resp = self.send(prep, **send_kwargs)
-
-        return resp
+        return self.send(prep, **send_kwargs)
 
     def get(self, url, **kwargs):
         """Sends a GET request. Returns :class:`Response` object.
@@ -578,7 +575,7 @@ class Session(SessionRedirectMixin):
             proxies=proxies)
 
         # Resolve redirects if allowed.
-        history = [resp for resp in gen] if allow_redirects else []
+        history = list(gen) if allow_redirects else []
 
         # Shuffle things around if there's history.
         if history:
@@ -617,7 +614,7 @@ class Session(SessionRedirectMixin):
             self.adapters[key] = self.adapters.pop(key)
 
     def __getstate__(self):
-        return dict((attr, getattr(self, attr, None)) for attr in self.__attrs__)
+        return {attr: getattr(self, attr, None) for attr in self.__attrs__}
 
     def __setstate__(self, state):
         for attr, value in state.items():

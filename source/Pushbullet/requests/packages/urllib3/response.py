@@ -166,9 +166,8 @@ class HTTPResponse(io.IOBase):
         # Note: content-encoding value should be case-insensitive, per RFC 2616
         # Section 3.5
         content_encoding = self.headers.get('content-encoding', '').lower()
-        if self._decoder is None:
-            if content_encoding in self.CONTENT_DECODERS:
-                self._decoder = _get_decoder(content_encoding)
+        if self._decoder is None and content_encoding in self.CONTENT_DECODERS:
+            self._decoder = _get_decoder(content_encoding)
         if decode_content is None:
             decode_content = self.decode_content
 
@@ -237,14 +236,12 @@ class HTTPResponse(io.IOBase):
             'content-encoding' header.
         """
         while not is_fp_closed(self._fp):
-            data = self.read(amt=amt, decode_content=decode_content)
-
-            if data:
+            if data := self.read(amt=amt, decode_content=decode_content):
                 yield data
 
 
     @classmethod
-    def from_httplib(ResponseCls, r, **response_kw):
+    def from_httplib(cls, r, **response_kw):
         """
         Given an :class:`httplib.HTTPResponse` instance ``r``, return a
         corresponding :class:`urllib3.response.HTTPResponse` object.
@@ -259,14 +256,16 @@ class HTTPResponse(io.IOBase):
 
         # HTTPResponse objects in Python 3 don't have a .strict attribute
         strict = getattr(r, 'strict', 0)
-        return ResponseCls(body=r,
-                           headers=headers,
-                           status=r.status,
-                           version=r.version,
-                           reason=r.reason,
-                           strict=strict,
-                           original_response=r,
-                           **response_kw)
+        return cls(
+            body=r,
+            headers=headers,
+            status=r.status,
+            version=r.version,
+            reason=r.reason,
+            strict=strict,
+            original_response=r,
+            **response_kw
+        )
 
     # Backwards-compatibility methods for httplib.HTTPResponse
     def getheaders(self):

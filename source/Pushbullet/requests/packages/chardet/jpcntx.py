@@ -182,10 +182,11 @@ class SJISContextAnalysis(JapaneseContextAnalysis):
             return -1, 1
         # find out current char's byte length
         first_char = wrap_ord(aBuf[0])
-        if ((0x81 <= first_char <= 0x9F) or (0xE0 <= first_char <= 0xFC)):
-            charLen = 2
-        else:
-            charLen = 1
+        charLen = (
+            2
+            if ((0x81 <= first_char <= 0x9F) or (0xE0 <= first_char <= 0xFC))
+            else 1
+        )
 
         # return its order if it is hiragana
         if len(aBuf) > 1:
